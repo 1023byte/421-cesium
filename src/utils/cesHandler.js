@@ -168,6 +168,8 @@ export function drawStart() {
       //绘制完成后删除定位点
       dragPoints.forEach((e) => viewer.entities.remove(e));
       dragPoints = [];
+
+      localStorage.setItem("ShapePoints", JSON.stringify(ShapePoints));
     }
   }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
 
