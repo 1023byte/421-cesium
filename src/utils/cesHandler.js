@@ -19,7 +19,7 @@ let floatingPoint;
 let isDraw = false;
 let isDrag = false;
 let pickedPoint = null;
-
+let pickedIdx = null;
 let handler;
 let idx = -1;
 let data = {};
@@ -53,13 +53,13 @@ export function drawStart() {
       if (Cesium.defined(position) && !isEntity) {
         //绘制新图形
         if (!tempShape) {
-          idx = ShapePoints.length;
-          ShapePoints.push([]);
-          dragPoints.forEach((e) => viewer.entities.remove(e));
-          dragPoints = [];
           //写入自定义data
           data.id = prompt("输入编号");
           if (data.id == null) return;
+          dragPoints.forEach((e) => viewer.entities.remove(e));
+          dragPoints = [];
+          idx = ShapePoints.length;
+          ShapePoints.push([]);
 
           //绘制跟随鼠标移动点
           floatingPoint = drawPoint(position);
@@ -79,11 +79,16 @@ export function drawStart() {
         ShapePoints[idx].push(position);
       }
 
+      if (isEntity) {
+        dragPoints.forEach((e) => viewer.entities.remove(e));
+        dragPoints = [];
+      }
       //点击到图形上
-
       if (isEntity && dragPoints.length == 0) {
         //渲染选中的图形的顶点
         const points = pickedObject.id.polygon.hierarchy.getValue().positions;
+        //计算图形在ShapePoints中的索引
+        pickedIdx = shapes.findIndex((e) => e.id === pickedObject.id.id);
         points.forEach((e, idx) => {
           const dragPoint = drawPoint(e);
           dragPoint.dragIdx = idx;
@@ -120,7 +125,9 @@ export function drawStart() {
       //拖拽
       if (isDrag && Cesium.defined(pickedPoint)) {
         pickedPoint.position.setValue(position);
-        ShapePoints[idx][pickedPoint.dragIdx] = position;
+        console.log(pickedPoint);
+
+        ShapePoints[pickedIdx][pickedPoint.dragIdx] = position;
         viewer.scene.screenSpaceCameraController.enableRotate = false;
       }
     }
@@ -148,12 +155,13 @@ export function drawStart() {
         }
       }
 
+      if (ShapePoints[idx].length < 3) ShapePoints.pop();
       //图形构成的点数大于2，绘制完成并写入数据
       if (tempShape && ShapePoints[idx].length > 3) {
         ShapePoints[idx].pop();
         const center = Cesium.BoundingSphere.fromPoints(tempShapePoints).center;
         data.center = center;
-
+        console.log(idx, data);
         shapes[idx].data = data;
         tempShape = null;
       }
