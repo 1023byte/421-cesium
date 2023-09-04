@@ -23,6 +23,7 @@ let pickedIdx = null;
 let handler;
 let idx = -1;
 let data = {};
+
 export function drawStart() {
   isDraw = true;
   handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
@@ -164,12 +165,16 @@ export function drawStart() {
         console.log(idx, data);
         shapes[idx].data = data;
         tempShape = null;
+
+        const shapeData = [];
+        for (let i = 0; i < shapes.length; i++) {
+          shapeData.push({ data: shapes[i].data, points: ShapePoints[i] });
+        }
+        localStorage.setItem("shapeData", JSON.stringify(shapeData));
       }
       //绘制完成后删除定位点
       dragPoints.forEach((e) => viewer.entities.remove(e));
       dragPoints = [];
-
-      localStorage.setItem("ShapePoints", JSON.stringify(ShapePoints));
     }
   }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
 
@@ -195,6 +200,8 @@ export function drawStart() {
 
 export function drawEnd() {
   isDraw = false;
+  //销毁handler
+  handler.destroy();
 
   return shapes;
 }

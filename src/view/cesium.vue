@@ -54,6 +54,14 @@ onMounted(() => {
       },
     ],
   };
+
+  let shapeData = localStorage.getItem("shapeData");
+  if (shapeData) {
+    shapeData = JSON.parse(shapeData);
+    shapeData.forEach((item) => {
+      drawPolygon(newCartesians(item.points), item.data);
+    });
+  }
   //绘制区域
   drawPolygon(newCartesians(t.coordinates), t.id);
   //绘制边框
@@ -62,14 +70,14 @@ onMounted(() => {
   drawLabel(newCartesians(t.center), t.id);
   //绘制图表
   drawIcon(newCartesians(t.center), ["r", "y", "g", "y", "g", "y"]);
+
   const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
   handler.setInputAction((click) => {
     //获取图形的属性
     const pickedObject = viewer.scene.pick(click.position);
-    // if (Cesium.defined(pickedObject)) console.log(pickedObject.id);
+    if (Cesium.defined(pickedObject)) console.log(pickedObject.id);
     // console.log(pickedObject?.id?.polygon?.hierarchy._value.positions);
 
-    let tilePosition = viewer.scene.pickPosition(click.position);
     // console.log("tilePosition " + tilePosition);
   }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 });
