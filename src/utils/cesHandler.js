@@ -13,9 +13,7 @@ let ShapePoints = [];
 let dragPoints = [];
 let tempShape = null;
 let tempShapePoints = [];
-
 let floatingPoint;
-
 let isDraw = false;
 let isDrag = false;
 let pickedPoint = null;
@@ -57,6 +55,7 @@ export function drawStart() {
           //写入自定义data
           data.id = prompt("输入编号");
           if (data.id == null) return;
+          //移除所有拖拽点
           dragPoints.forEach((e) => viewer.entities.remove(e));
           dragPoints = [];
           idx = ShapePoints.length;
@@ -200,8 +199,6 @@ export function drawStart() {
 
 export function drawEnd() {
   isDraw = false;
-  //销毁handler
   handler.destroy();
-
   return shapes;
 }

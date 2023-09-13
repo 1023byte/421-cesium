@@ -1,5 +1,6 @@
 <template>
   <div id="cesiumContainer"></div>
+
   <div class="toolbar">
     <button @click="startButton">开始绘制</button>
     <button @click="endButton">保存绘制</button>
@@ -8,7 +9,8 @@
 
 <script setup>
 import * as Cesium from "cesium";
-import { onMounted } from "vue";
+import { onMounted, createApp, h, ref } from "vue";
+
 import {
   drawPolygon,
   drawPolygonLine,
@@ -18,8 +20,10 @@ import {
 } from "@/utils/cesiumTools.js";
 import { cesConfig } from "@/utils/cesConfig.js";
 import { drawStart, drawEnd } from "@/utils/cesHandler.js";
+import PopupComponent from "@/components/Popup.vue";
 let viewer = null;
-
+let postRenderListener = null;
+const popupRef = ref(null);
 onMounted(() => {
   viewer = cesConfig("cesiumContainer");
 
@@ -71,15 +75,33 @@ onMounted(() => {
   //绘制图表
   drawIcon(newCartesians(t.center), ["r", "y", "g", "y", "g", "y"]);
 
-  const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
-  handler.setInputAction((click) => {
-    //获取图形的属性
-    const pickedObject = viewer.scene.pick(click.position);
-    if (Cesium.defined(pickedObject)) console.log(pickedObject.id);
-    // console.log(pickedObject?.id?.polygon?.hierarchy._value.positions);
+  //   const handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+  //   handler.setInputAction((click) => {
+  //     //获取图形的属性
+  //   }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
-    // console.log("tilePosition " + tilePosition);
-  }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
+  //   viewer.screenSpaceEventHandler.setInputAction((click) => {
+  //     const pickedObject = viewer.scene.pick(click.position);
+  //     if (Cesium.defined(pickedObject) && pickedObject.id) {
+  //       //获取坐标
+  //       const ray = viewer.camera.getPickRay(click.position);
+  //       let position = viewer.scene.globe.pick(ray, viewer.scene);
+  //       postRenderListener = () => {
+  //         const popupPosition =
+  //           viewer.scene.cartesianToCanvasCoordinates(position);
+  //         console.log(popupPosition);
+  //       };
+  //       viewer.scene.postRender.addEventListener(postRenderListener);
+  //     }
+  //   }, Cesium.ScreenSpaceEventType.LEFT_DOWN);
+  //   viewer.screenSpaceEventHandler.setInputAction((click) => {
+  //     if (postRenderListener) {
+  //       viewer.scene.postRender.removeEventListener(postRenderListener);
+  //       postRenderListener = null;
+
+  //       console.log("移除");
+  //     }
+  //   }, Cesium.ScreenSpaceEventType.LEFT_UP);
 });
 
 function startButton() {
@@ -88,6 +110,7 @@ function startButton() {
 }
 function endButton() {
   drawEnd();
+
   console.log("结束绘制");
 }
 </script>
