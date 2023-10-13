@@ -5,96 +5,69 @@ import {
   drawPolygon,
   drawDynamicPolygon,
 } from "@/utils/cesiumTools.js";
-//图形对象集合
-let shapes = [];
-//图形顶点集合
-let ShapePoints = [];
-//拖拽点集合
-let dragPoints = [];
-let tempShape = null;
-let tempShapePoints = [];
-let floatingPoint;
+import optionBox from "./optionBox.js";
+
+import addInfoVue from "@/components/addInfo.vue";
+
+//顶点集合
+let ShapePoints = {};
+//图形实体集合
+let shapes = {};
+
+//当前图形GeoJson
+let currShapePoints = null;
+
+//跟随鼠标移动点
+let floatingPoint = null;
+
+//临时点实体集合
+let tempPoints = [];
 let isDraw = false;
 let isDrag = false;
-let pickedPoint = null;
-let pickedIdx = null;
+let dragPointIdx = -1;
 let handler;
-let idx = -1;
-let data = {};
+
+setTimeout(() => {
+  handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
+}, 0);
 
 export function drawStart() {
   isDraw = true;
-  handler = new Cesium.ScreenSpaceEventHandler(viewer.scene.canvas);
-
   // LEFT_CLICK
   handler.setInputAction((click) => {
     if (isDraw) {
-      // 获取鼠标点击位置的坐标
+      //获取鼠标点击的坐标
       const ray = viewer.camera.getPickRay(click.position);
       let position = viewer.scene.globe.pick(ray, viewer.scene);
-      const pickedObject = viewer.scene.pick(click.position);
-      //点击到图形上,排除动态顶点
-      const isEntity =
-        pickedObject?.id instanceof Cesium.Entity &&
-        !pickedObject?.id.isFloating;
 
-      //3dtile模型的坐标
-      // let tilePosition = viewer.scene.pickPosition(click.position);
-
-      // if (tilePosition) {
-      //   const temp = Cesium.Cartographic.fromCartesian(tilePosition);
-      //   // 转换为Cartesian3坐标
-      //   tilePosition =
-      //     viewer.scene.globe.ellipsoid.cartographicToCartesian(temp);
-      // }
-
-      // 鼠标点击位置有坐标
-      if (Cesium.defined(position) && !isEntity) {
-        //绘制新图形
-        if (!tempShape) {
-          //写入自定义data
-          data.id = prompt("输入编号");
-          if (data.id == null) return;
-          //移除所有拖拽点
-          dragPoints.forEach((e) => viewer.entities.remove(e));
-          dragPoints = [];
-          idx = ShapePoints.length;
-          ShapePoints.push([]);
-
-          //绘制跟随鼠标移动点
-          floatingPoint = drawPoint(position);
-          floatingPoint.isFloating = true;
-          ShapePoints[idx].push(position);
-
-          //绘制动态多边形
-          const DynamicPolygon = drawDynamicPolygon(ShapePoints[idx]);
-          const shape = drawPolygon(DynamicPolygon);
-          tempShape = shape;
-          shapes.push(shape);
-        }
-        //绘制图形的后续点击
-        const dragPoint = drawPoint(position);
-        dragPoint.dragIdx = ShapePoints[idx].length - 1;
-        dragPoints.push(dragPoint);
-        ShapePoints[idx].push(position);
+      //判断是否是第一个点
+      if (!currShapePoints) {
+        tempPoints.push(drawPoint(position));
+        console.log("tempPoints", tempPoints);
+        const feature = {
+          type: "Feature",
+          properties: {},
+          geometry: {
+            type: "Polygon",
+            coordinates: [],
+          },
+        };
+        feature.geometry.coordinates.push(position);
+        const DynamicPolygon = drawDynamicPolygon(feature.geometry.coordinates);
+        const shape = drawPolygon(DynamicPolygon);
+        feature.properties.id = shape.id;
+        ShapePoints[shape.id] = feature;
+        shapes[shape.id] = shape;
+        currShapePoints = feature;
+        console.log("currShapePoints2", currShapePoints);
       }
 
-      if (isEntity) {
-        dragPoints.forEach((e) => viewer.entities.remove(e));
-        dragPoints = [];
-      }
-      //点击到图形上
-      if (isEntity && dragPoints.length == 0) {
-        //渲染选中的图形的顶点
-        const points = pickedObject.id.polygon.hierarchy.getValue().positions;
-        //计算图形在ShapePoints中的索引
-        pickedIdx = shapes.findIndex((e) => e.id === pickedObject.id.id);
-        points.forEach((e, idx) => {
-          const dragPoint = drawPoint(e);
-          dragPoint.dragIdx = idx;
-          dragPoints.push(dragPoint);
-        });
-      }
+      //绘制跟随鼠标移动点
+      floatingPoint = drawPoint(position);
+      tempPoints.push(floatingPoint);
+      floatingPoint.isFloating = true;
+      currShapePoints.geometry.coordinates.push(position);
+      console.log("currShapePoints3", currShapePoints);
     }
   }, Cesium.ScreenSpaceEventType.LEFT_CLICK);
 
@@ -104,101 +77,109 @@ export function drawStart() {
       const ray = viewer.camera.getPickRay(click.endPosition);
       let position = viewer.scene.globe.pick(ray, viewer.scene);
 
-      //存在floatingPoint正在绘制图形
-      if (Cesium.defined(floatingPoint) && Cesium.defined(position)) {
-        //3dtile模型的坐标
-        // let tilePosition = viewer.scene.pickPosition(click.endPosition);
-        // if (tilePosition) {
-        //   const temp = Cesium.Cartographic.fromCartesian(tilePosition);
-        //   temp.height += 0.1;
-        //   // 转换为Cartesian3坐标
-        //   tilePosition =
-        //     viewer.scene.globe.ellipsoid.cartographicToCartesian(temp);
-        // }
-        // 鼠标点击位置有坐标
-
+      if (Cesium.defined(floatingPoint)) {
         floatingPoint.position.setValue(position);
-        ShapePoints[idx].pop();
-        ShapePoints[idx].push(position);
+        currShapePoints.geometry.coordinates.pop();
+        currShapePoints.geometry.coordinates.push(position);
       }
-
-      //拖拽
-      if (isDrag && Cesium.defined(pickedPoint)) {
-        pickedPoint.position.setValue(position);
-        console.log(pickedPoint);
-
-        ShapePoints[pickedIdx][pickedPoint.dragIdx] = position;
-        viewer.scene.screenSpaceCameraController.enableRotate = false;
-      }
+    }
+    if (dragPointIdx >= 0) {
+      console.log("dragPointIdx", dragPointIdx);
+      viewer.scene.screenSpaceCameraController.enableRotate = false;
+      const ray = viewer.camera.getPickRay(click.endPosition);
+      let position = viewer.scene.globe.pick(ray, viewer.scene);
+      tempPoints[dragPointIdx].position.setValue(position);
+      currShapePoints.geometry.coordinates[dragPointIdx] = position;
     }
   }, Cesium.ScreenSpaceEventType.MOUSE_MOVE);
 
   // RIGHT_CLICK
   handler.setInputAction((click) => {
+    //绘制状态下，右键删除上一个点
     if (isDraw) {
-      viewer.entities.remove(floatingPoint);
-      floatingPoint = undefined;
-
-      //如果点击到图形上，弹出删除选择框
-      const pickedObject = viewer.scene.pick(click.position);
-      if (Cesium.defined(pickedObject) && !tempShape) {
-        const id = pickedObject.id.id;
-        const isDelete = confirm("是否删除该图形");
-        if (isDelete) {
-          viewer.entities.remove(pickedObject.id);
-          //计算删除的图形的索引
-          const delIdx = shapes.findIndex((e) => e.id === id);
-          shapes.splice(delIdx, 1);
-          ShapePoints.splice(delIdx, 1);
-
-          console.log("del ", shapes, idx);
-        }
+      if (tempPoints.length > 2) {
+        currShapePoints.geometry.coordinates.splice(-2, 1);
+        viewer.entities.remove(tempPoints.splice(-2, 1)[0]);
       }
-
-      if (ShapePoints[idx].length < 3) ShapePoints.pop();
-      //图形构成的点数大于2，绘制完成并写入数据
-      if (tempShape && ShapePoints[idx].length > 3) {
-        ShapePoints[idx].pop();
-        const center = Cesium.BoundingSphere.fromPoints(tempShapePoints).center;
-        data.center = center;
-        console.log(idx, data);
-        shapes[idx].data = data;
-        tempShape = null;
-
-        const shapeData = [];
-        for (let i = 0; i < shapes.length; i++) {
-          shapeData.push({ data: shapes[i].data, points: ShapePoints[i] });
-        }
-        localStorage.setItem("shapeData", JSON.stringify(shapeData));
+    } else if (isDrag) {
+      console.log(isDrag);
+    } else {
+      //非绘制、拖拽状态下，右键选中图形
+      console.log("click");
+      const pick = viewer.scene.pick(click.position);
+      const ray = viewer.camera.getPickRay(click.position);
+      let position = viewer.scene.globe.pick(ray, viewer.scene);
+      if (Cesium.defined(pick?.id)) {
+        currShapePoints = ShapePoints[pick.id.id];
+        console.log("currShapePoints1", currShapePoints);
+        //弹出选项框
+        const options = {
+          position: position,
+          operation: [
+            { name: "添加信息", callback: addInfo },
+            { name: "移动点位", callback: movePoint },
+            { name: "删除图形", callback: delShape },
+            { name: "取消", callback: () => {} },
+          ],
+        };
+        const optionbox = new optionBox(viewer, options);
       }
-      //绘制完成后删除定位点
-      dragPoints.forEach((e) => viewer.entities.remove(e));
-      dragPoints = [];
     }
   }, Cesium.ScreenSpaceEventType.RIGHT_CLICK);
 
+  //双击
+  handler.setInputAction((click) => {
+    if (isDraw) {
+      currShapePoints.geometry.coordinates.splice(-2);
+      currShapePoints = null;
+      floatingPoint = null;
+      isDraw = false;
+    }
+    if (isDrag) isDrag = false;
+    tempPoints.forEach((point) => {
+      viewer.entities.remove(point);
+    });
+    tempPoints = [];
+  }, Cesium.ScreenSpaceEventType.LEFT_DOUBLE_CLICK);
   // LEFT_DOWN
   handler.setInputAction((click) => {
-    const pickedObject = viewer.scene.pick(click.position);
-    //是否点击到拖拽点
-    if (Cesium.defined(pickedObject) && pickedObject.id?.dragIdx > -1) {
-      pickedPoint = pickedObject.id;
-      isDrag = true;
+    if (isDrag) {
+      const pick = viewer.scene.pick(click.position);
+      if (Cesium.defined(pick?.id)) {
+        dragPointIdx = tempPoints.findIndex((e) => e.id === pick.id.id);
+      }
     }
   }, Cesium.ScreenSpaceEventType.LEFT_DOWN);
 
   // LEFT_UP
   handler.setInputAction((click) => {
     if (isDrag) {
-      isDrag = false;
-      pickedPoint = null;
+      dragPointIdx = -1;
       viewer.scene.screenSpaceCameraController.enableRotate = true;
     }
   }, Cesium.ScreenSpaceEventType.LEFT_UP);
 }
 
-export function drawEnd() {
-  isDraw = false;
-  handler.destroy();
-  return shapes;
+export function drawEnd() {}
+
+function delShape() {
+  const id = currShapePoints.properties.id;
+  viewer.entities.remove(shapes[id]);
+  delete shapes[id];
+  delete ShapePoints[id];
+  currShapePoints = null;
+}
+function movePoint() {
+  const points = currShapePoints.geometry.coordinates;
+  points.forEach((point) => {
+    tempPoints.push(drawPoint(point));
+  });
+  isDrag = true;
+}
+function addInfo() {
+  const options = {
+    element: addInfoVue,
+    operation: [{ data: currShapePoints }],
+  };
+  const popup = new optionBox(viewer, options);
 }
