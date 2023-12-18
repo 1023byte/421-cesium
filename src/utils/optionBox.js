@@ -1,5 +1,5 @@
 import { Cartesian3, SceneTransforms } from "cesium";
-import { createApp } from "vue";
+
 //根据数据创建弹窗div
 // export function optionsBox(viewer, options) {
 //   //创建div
@@ -51,10 +51,6 @@ export default class optionBox {
     if (options.element) {
       const parent = document.createElement("div");
       this.viewer.scene.canvas.parentNode.appendChild(parent);
-      const VueConstructor = createApp(options.element).mount(parent);
-      VueConstructor.component.props = options.operation;
-      console.log("VueConstructor", VueConstructor);
-      // VueConstructor.setData({ operation: this.operation });
     } else {
       this.element = this.createElement();
       this.viewer.scene.postRender.addEventListener(this.updatePosition);

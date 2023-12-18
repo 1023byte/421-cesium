@@ -9,7 +9,7 @@
 
 <script setup>
 import * as Cesium from "cesium";
-import { onMounted, createApp, h, ref } from "vue";
+import { onMounted, ref } from "vue";
 
 import {
   drawPolygon,
@@ -110,7 +110,6 @@ function startButton() {
 }
 function endButton() {
   drawEnd();
-
   console.log("结束绘制");
 }
 </script>

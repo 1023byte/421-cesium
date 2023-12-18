@@ -1,5 +1,5 @@
 <template>
-  <div>123</div>
+  <div>123{{ data }}</div>
 </template>
 
 <script setup>
@@ -9,7 +9,7 @@ const props = defineProps({
     default: () => {},
   },
 });
-console.log(props.data);
+console.log("data", props.data);
 </script>
 
 <style lang="scss" scoped></style>

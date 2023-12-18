@@ -39,6 +39,11 @@ export function drawStart() {
       //获取鼠标点击的坐标
       const ray = viewer.camera.getPickRay(click.position);
       let position = viewer.scene.globe.pick(ray, viewer.scene);
+      //3dtile模型的坐标
+      // let tilePosition = viewer.scene.pickPosition(click.position);
+      // if (tilePosition) {
+      //   position = tilePosition;
+      // }
 
       //判断是否是第一个点
       if (!currShapePoints) {
@@ -176,10 +181,4 @@ function movePoint() {
   });
   isDrag = true;
 }
-function addInfo() {
-  const options = {
-    element: addInfoVue,
-    operation: [{ data: currShapePoints }],
-  };
-  const popup = new optionBox(viewer, options);
-}
+function addInfo() {}
